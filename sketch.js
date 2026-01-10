@@ -6,7 +6,7 @@ import AudioManager from "./core/AudioManager.js";
 import { Ship } from "./entities/Ship.js";
 import { GravityWell } from "./entities/GravityWell.js";
 import { Target } from "./entities/Target.js";
-import { Star } from "./entities/Star.js";
+import { Star } from "./entities/Stars.js";
 
 import { HUD } from "./ui/HUD.js";
 import { Streak } from "./ui/Streak.js";
