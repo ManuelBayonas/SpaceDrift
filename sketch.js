@@ -345,10 +345,16 @@ function resetLevel() {
 }
 
 function generateBackground() {
-  backgroundLayer = createGraphics(width, height);
+
+  const d = pixelDensity();
+
+  backgroundLayer = createGraphics(width * d, height * d);
+  backgroundLayer.pixelDensity(1); // MUY IMPORTANTE
+
   let nebula = new Nebula();
   nebula.render(backgroundLayer);
 }
+
 
 function initStars() {
   stars = [];
