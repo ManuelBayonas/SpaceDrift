@@ -1,7 +1,5 @@
 export default class AudioManager {
-
   constructor() {
-
     // --------------------
     // MÚSICA / AMBIENTE
     // --------------------
@@ -40,8 +38,8 @@ export default class AudioManager {
     this.menuNoise.setVolume(0.6);
     this.gameTheme.setVolume(0.0);
 
-    this.startTheme.loop();
-    this.menuNoise.loop();
+    if (!this.startTheme.isPlaying()) this.startTheme.loop();
+    if (!this.menuNoise.isPlaying()) this.menuNoise.loop();
   }
 
   // ======================================================
@@ -63,36 +61,26 @@ export default class AudioManager {
     this.fadingToStart = true;
     this.fadingToGame  = false;
 
-    if (!this.startTheme.isPlaying()) {
-      this.startTheme.loop();
-    }
-    if (!this.menuNoise.isPlaying()) {
-      this.menuNoise.loop();
-    }
+    if (!this.startTheme.isPlaying()) this.startTheme.loop();
+    if (!this.menuNoise.isPlaying()) this.menuNoise.loop();
   }
 
   // ======================================================
   // EFECTOS DE JUEGO
   // ======================================================
   playWin() {
-    if (this.targetReached.isLoaded()) {
-      this.targetReached.play();
-    }
+    this.targetReached.play();
   }
 
   playFail(collision = true) {
-    if (collision) {
-      this.collisionLost.play();
-    } else {
-      this.offscreenLost.play();
-    }
+    if (collision) this.collisionLost.play();
+    else this.offscreenLost.play();
   }
 
   // ======================================================
   // THRUST (LOOP CONTROLADO)
   // ======================================================
   updateThrust(isThrusting) {
-
     if (isThrusting && !this.thrustPlaying) {
       this.thrustSound.loop();
       this.thrustPlaying = true;
@@ -112,7 +100,6 @@ export default class AudioManager {
   }
 
   updateFades() {
-
     if (this.fadingToGame) {
       this.musicFade = max(this.musicFade - this.fadeSpeed, 0);
 
