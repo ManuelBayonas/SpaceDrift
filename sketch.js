@@ -1,5 +1,7 @@
-import { AudioManager } from "./core/AudioManager.js";
-import { InputManager } from "./core/InputManager.js";
+import AudioManager from "./core/AudioManager.js";
+// Nota: estás importando InputManager pero no lo usas aún.
+// Si lo quieres usar luego, perfecto. Si no, puedes quitarlo.
+// import InputManager from "./core/InputManager.js";
 
 import { Ship } from "./entities/Ship.js";
 import { GravityWell } from "./entities/GravityWell.js";
@@ -11,7 +13,7 @@ import { Streak } from "./ui/Streak.js";
 
 import { Nebula } from "./visuals/Nebula.js";
 
-/* 
+/*
 Space Drift
 Juego de navegación basado en fuerzas gravitatorias.
 Adaptación completa a p5.js (desktop + móvil).
@@ -29,12 +31,12 @@ let maxPlanets = 3;
 // ======================================================
 // ESTADOS DEL JUEGO
 // ======================================================
-const STATE_START      = 0;
-const STATE_PLAY       = 1;
-const STATE_WIN        = 2;
-const STATE_FAIL       = 3;
-const STATE_PAUSE      = 4;
-const STATE_SCORES     = 5;
+const STATE_START = 0;
+const STATE_PLAY = 1;
+const STATE_WIN = 2;
+const STATE_FAIL = 3;
+const STATE_PAUSE = 4;
+const STATE_SCORES = 5;
 const STATE_ENTER_NAME = 6;
 
 let gameState = STATE_START;
@@ -42,16 +44,16 @@ let gameState = STATE_START;
 // ======================================================
 // CONTROL DE TIEMPOS (millis)
 // ======================================================
-const WIN_DELAY_MS  = 1500;
+const WIN_DELAY_MS = 1500;
 const FAIL_DELAY_MS = 2500;
 
-let winStartTime  = 0;
+let winStartTime = 0;
 let failStartTime = 0;
 
 // ======================================================
 // AUDIO (WEB)
 // ======================================================
-let audioManager;
+let audioManager = null;
 let audioUnlocked = false;
 
 // ======================================================
@@ -92,6 +94,14 @@ let streaks = [];
 let numStreaks = 6;
 
 // ======================================================
+// PRELOAD (IMPORTANTE PARA loadSound)
+// ======================================================
+function preload() {
+  // Carga de audio aquí para que p5.sound lo gestione correctamente
+  audioManager = new AudioManager();
+}
+
+// ======================================================
 // SETUP
 // ======================================================
 function setup() {
@@ -99,7 +109,6 @@ function setup() {
   pixelDensity(Math.min(2, window.devicePixelRatio || 1));
 
   hud = new HUD();
-  audioManager = new AudioManager();
 
   generateBackground();
   initStars();
@@ -119,7 +128,8 @@ function draw() {
     return;
   }
 
-  audioManager.update();
+  // audioManager existe desde preload(); si por cualquier razón no existiera, evitamos crash
+  if (audioManager) audioManager.update();
 
   switch (gameState) {
     case STATE_START:
@@ -145,6 +155,10 @@ function draw() {
       renderPlay();
       drawPauseOverlay();
       break;
+
+    // Si luego reactivas estas pantallas, añade sus funciones:
+    // case STATE_SCORES:
+    // case STATE_ENTER_NAME:
   }
 }
 
@@ -245,11 +259,28 @@ function drawFail() {
   text("Lost contact", width / 2, 30);
 
   if (millis() - failStartTime > FAIL_DELAY_MS) {
+    audioManager.updateThrust(false);
     audioManager.stopFailFX();
     audioManager.fadeToStart();
     resetGame();
     gameState = STATE_START;
   }
+}
+
+// ======================================================
+// PAUSA (si la necesitas)
+// ======================================================
+function drawPauseOverlay() {
+  push();
+  fill(0, 180);
+  rect(0, 0, width, height);
+  fill(255);
+  textAlign(CENTER, CENTER);
+  textSize(28);
+  text("PAUSED", width / 2, height / 2 - 20);
+  textSize(16);
+  text("Tap / press SPACE to resume", width / 2, height / 2 + 20);
+  pop();
 }
 
 // ======================================================
@@ -264,8 +295,8 @@ function handleInput() {
   if (keyIsDown(DOWN_ARROW))  { ship.thrust(createVector(0, 1));  isThrusting = true; }
 
   if (isThrusting && !wasThrusting) corrections++;
-  audioManager.updateThrust(isThrusting);
 
+  audioManager.updateThrust(isThrusting);
   wasThrusting = isThrusting;
 }
 
@@ -276,6 +307,7 @@ function resetForNext() {
   corrections = 0;
   wasThrusting = false;
   levelScore = levelStartScore;
+
   generateBackground();
   resetLevel();
 }
@@ -375,4 +407,19 @@ function touchStarted() {
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
   generateBackground();
+  initStars();
+  initStreaks();
+  resetLevel();
 }
+
+// ======================================================
+// REGISTRO EN window PARA QUE p5 (GLOBAL MODE) LOS ENCUENTRE
+// ======================================================
+window.preload = preload;
+window.setup = setup;
+window.draw = draw;
+
+window.mousePressed = mousePressed;
+window.touchStarted = touchStarted;
+
+window.windowResized = windowResized;
