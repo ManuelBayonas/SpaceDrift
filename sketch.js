@@ -393,13 +393,38 @@ function unlockAudioIfNeeded() {
 }
 
 function mousePressed() {
-  unlockAudioIfNeeded();
+
+  // 1. Desbloqueo de audio (solo la primera vez)
+  if (!audioUnlocked) {
+    unlockAudioIfNeeded();
+    return;
+  }
+
+  // 2. Arranque del juego desde la pantalla inicial
+  if (gameState === STATE_START) {
+    audioManager.fadeToGame();
+    resetGame();
+    gameState = STATE_PLAY;
+  }
 }
 
+
 function touchStarted() {
-  unlockAudioIfNeeded();
+
+  if (!audioUnlocked) {
+    unlockAudioIfNeeded();
+    return false;
+  }
+
+  if (gameState === STATE_START) {
+    audioManager.fadeToGame();
+    resetGame();
+    gameState = STATE_PLAY;
+  }
+
   return false;
 }
+
 
 // ======================================================
 // RESPONSIVE
