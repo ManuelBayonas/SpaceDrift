@@ -1,87 +1,107 @@
 export class GravityWell {
+
   constructor(x, y, mass, radius) {
     this.pos = createVector(x, y);
     this.mass = mass;
     this.radius = radius;
+
     this.sprite = this.generateSprite();
   }
 
+  // --------------------------------------------------
+  // FUERZA DE ATRACCIÓN
+  // --------------------------------------------------
   attract(ship) {
-    let force = p5.Vector.sub(this.pos, ship.pos);
-    let d = constrain(force.mag(), 25, 300);
+    const force = p5.Vector.sub(this.pos, ship.pos);
+    let d = force.mag();
+
+    // Limitar distancia para evitar fuerzas extremas
+    d = constrain(d, 25, 300);
+
     force.normalize();
-    let strength = this.mass / (d * d);
+
+    // Constante gravitatoria implícita (ajuste de diseño)
+    const strength = this.mass / (d * d);
     force.mult(strength);
+
     return force;
   }
 
+  // --------------------------------------------------
+  // COLISIÓN
+  // --------------------------------------------------
   collides(ship) {
-    return p5.Vector.dist(this.pos, ship.pos) < this.radius + ship.size * 0.4;
+    return p5.Vector.dist(this.pos, ship.pos) <
+           this.radius + ship.size * 0.4;
   }
 
+  // --------------------------------------------------
+  // SPRITE PROCEDURAL
+  // --------------------------------------------------
   generateSprite() {
-  const d = int(this.radius * 2.4);
-  const pg = createGraphics(d, d);
+    const d = int(this.radius * 2.4);
+    const pg = createGraphics(d, d);
 
-  pg.noStroke();
-  const noiseScale = 0.08;
-  const offset = random(1000);
+    pg.pixelDensity(1);
+    pg.beginDraw();
+    pg.noStroke();
 
-  for (let y = 0; y < d; y++) {
-    for (let x = 0; x < d; x++) {
-      const dx = x - d / 2;
-      const dy = y - d / 2;
-      const dist = sqrt(dx * dx + dy * dy);
+    const noiseScale = 0.08;
+    const offset = random(1000);
 
-      if (dist < this.radius) {
-        const n = noise(x * noiseScale + offset,
-                        y * noiseScale + offset);
-        const shade = map(n, 0, 1, 180, 230);
-        pg.fill(shade);
-        pg.rect(x, y, 1, 1);
+    for (let y = 0; y < d; y++) {
+      for (let x = 0; x < d; x++) {
+
+        const dx = x - d / 2;
+        const dy = y - d / 2;
+        const dist = sqrt(dx * dx + dy * dy);
+
+        if (dist < this.radius) {
+          const n = noise(
+            x * noiseScale + offset,
+            y * noiseScale + offset
+          );
+
+          const shade = map(n, 0, 1, 180, 230);
+          pg.fill(shade);
+          pg.rect(x, y, 1, 1);
+        }
       }
     }
+
+    pg.endDraw();
+    return pg;
   }
 
-  return pg;
-}
-  
- display(ship) {
+  // --------------------------------------------------
+  // DIBUJO
+  // --------------------------------------------------
+  display(ship) {
 
-  // Distancia nave ↔ pozo gravitatorio
-  const d = p5.Vector.dist(this.pos, ship.pos);
+    const d = p5.Vector.dist(this.pos, ship.pos);
 
-  // Parámetros visuales del campo
-  const visualRadius = this.radius * 6;
-  const fadeStart = visualRadius * 0.8;
+    const visualRadius = this.radius * 6;
+    const fadeStart = visualRadius * 0.8;
 
-  // Intensidad del campo según distancia
-  let influence = map(d, fadeStart, this.radius, 0, 1);
-  influence = constrain(influence, 0, 1);
+    let influence = map(d, fadeStart, this.radius, 0, 1);
+    influence = constrain(influence, 0, 1);
 
-  // --------------------
-  // CAMPO GRAVITATORIO
-  // --------------------
-  if (influence > 0) {
-    noFill();
-    stroke(200, 120 * influence);
-    strokeWeight(1 + 2 * influence);
-    ellipse(
-      this.pos.x,
-      this.pos.y,
-      visualRadius * 2,
-      visualRadius * 2
-    );
+    // Campo gravitatorio (solo cuando tiene sentido)
+    if (influence > 0) {
+      noFill();
+      stroke(200, 120 * influence);
+      strokeWeight(1 + 2 * influence);
+      ellipse(
+        this.pos.x,
+        this.pos.y,
+        visualRadius * 2,
+        visualRadius * 2
+      );
+    }
+
+    // Planeta (núcleo)
+    imageMode(CENTER);
+    image(this.sprite, this.pos.x, this.pos.y);
+    imageMode(CORNER);
   }
-
-  // --------------------
-  // PLANETA (núcleo)
-  // --------------------
-  imageMode(CENTER);
-  image(this.sprite, this.pos.x, this.pos.y);
-  imageMode(CORNER);
-}
-
-
-
 }
