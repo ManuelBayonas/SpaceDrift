@@ -4,7 +4,11 @@ export class GravityWell {
     this.pos = createVector(x, y);
     this.mass = mass;
     this.radius = radius;
-
+    this.baseColor = color(
+      random(160, 220),
+      random(160, 220),
+      random(160, 220)
+    );
     this.sprite = this.generateSprite();
   }
 
@@ -62,10 +66,14 @@ export class GravityWell {
             y * noiseScale + offset
           );
 
-          const shade = map(n, 0, 1, 180, 230);
-          pg.fill(shade);
-          pg.rect(x, y, 1, 1);
-        }
+          const shade = map(n, 0, 1, 0.8, 1.1);
+
+            pg.fill(
+              red(this.baseColor)   * shade,
+              green(this.baseColor) * shade,
+              blue(this.baseColor)  * shade
+            );
+          }
       }
     }
 
