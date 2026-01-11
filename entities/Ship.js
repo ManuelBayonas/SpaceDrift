@@ -13,16 +13,28 @@ export class Ship {
     this.acc.add(f);
   }
 
-  thrust(dir) {
-    dir.normalize().mult(0.03);
-    this.acc.add(dir);
-  }
+thrust(dir) {
+  let basePower = 0.02;
+  const speedFactor = map(
+    this.vel.mag(),
+    0,
+    this.maxSpeed,
+    1.0,
+    0.3
+  );
+  const finalPower = basePower * constrain(speedFactor, 0.3, 1.0);
+  dir = dir.copy().normalize().mult(finalPower);
+  this.acc.add(dir);
+}
 
   update() {
     this.vel.add(this.acc);
     this.vel.limit(this.maxSpeed);
     this.pos.add(this.vel);
     this.acc.mult(0);
+    if (!this.isThrusting && this.acc.mag() < 0.001) {
+  this.vel.mult(0.995);
+}
   }
 
   display() {
