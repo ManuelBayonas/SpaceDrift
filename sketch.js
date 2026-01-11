@@ -1,105 +1,53 @@
 import AudioManager from "./core/AudioManager.js";
-// Nota: estás importando InputManager pero no lo usas aún.
-// Si lo quieres usar luego, perfecto. Si no, puedes quitarlo.
-// import InputManager from "./core/InputManager.js";
+import { InputManager } from "./core/InputManager.js";
 
 import { Ship } from "./entities/Ship.js";
 import { GravityWell } from "./entities/GravityWell.js";
 import { Target } from "./entities/Target.js";
 import { Star } from "./entities/Stars.js";
 
-import { HUD } from "./ui/HUD.js";
-import { Streak } from "./ui/Streak.js";
+// ======================================================
+// CONFIGURACIÓN LÓGICA
+// ======================================================
+export const LOGICAL_W = 800;
+export const LOGICAL_H = 800;
 
-import { Nebula } from "./visuals/Nebula.js";
-
-/*
-Space Drift
-Juego de navegación basado en fuerzas gravitatorias.
-Adaptación completa a p5.js (desktop + móvil).
-*/
+export let gameScale = 1;
+export let offsetX = 0;
+export let offsetY = 0;
 
 // ======================================================
-// CONFIGURACIÓN GENERAL
-// ======================================================
-let baseW = 800;
-let baseH = 800;
-
-let minPlanets = 2;
-let maxPlanets = 3;
-
-// ======================================================
-// ESTADOS DEL JUEGO
+// ESTADOS
 // ======================================================
 const STATE_START = 0;
-const STATE_PLAY = 1;
-const STATE_WIN = 2;
-const STATE_FAIL = 3;
-const STATE_PAUSE = 4;
-const STATE_SCORES = 5;
-const STATE_ENTER_NAME = 6;
+const STATE_PLAY  = 1;
+const STATE_WIN   = 2;
+const STATE_FAIL  = 3;
 
 let gameState = STATE_START;
 
 // ======================================================
-// CONTROL DE TIEMPOS (millis)
-// ======================================================
-const WIN_DELAY_MS = 1500;
-const FAIL_DELAY_MS = 2500;
-
-let winStartTime = 0;
-let failStartTime = 0;
-
-// ======================================================
-// AUDIO (WEB)
-// ======================================================
-let audioManager = null;
-let audioUnlocked = false;
-
-// ======================================================
-// OBJETOS DE JUEGO
+// JUEGO
 // ======================================================
 let ship;
 let wells = [];
 let target;
-let hud;
+let stars = [];
 
-// ======================================================
-// PUNTUACIÓN
-// ======================================================
 let score = 0;
 let corrections = 0;
+const levelStartScore = 100;
 
-let levelStartScore = 100;
-let levelScore = 100;
-let penaltyPerCorrection = 2;
+// ======================================================
+// AUDIO
+// ======================================================
+let audioManager;
+let audioUnlocked = false;
 
 // ======================================================
 // INPUT
 // ======================================================
-let isThrusting = false;
-let wasThrusting = false;
-
-// ======================================================
-// FONDO
-// ======================================================
-let backgroundLayer;
-let stars = [];
-let numStars = 250;
-
-// ======================================================
-// UI / DECORACIÓN
-// ======================================================
-let streaks = [];
-let numStreaks = 6;
-
-// ======================================================
-// PRELOAD (IMPORTANTE PARA loadSound)
-// ======================================================
-function preload() {
-  // Carga de audio aquí para que p5.sound lo gestione correctamente
-  audioManager = new AudioManager();
-}
+let input;
 
 // ======================================================
 // SETUP
@@ -108,31 +56,31 @@ function setup() {
   createCanvas(windowWidth, windowHeight);
   pixelDensity(Math.min(2, window.devicePixelRatio || 1));
 
-  hud = new HUD();
+  updateGameScale();
 
-  generateBackground();
-  initStars();
-  initStreaks();
+  audioManager = new AudioManager();
+  input = new InputManager();
+
+  generateStars();
   resetLevel();
 }
 
 // ======================================================
-// LOOP PRINCIPAL
+// DRAW
 // ======================================================
 function draw() {
   background(0);
-  if (!isLandscape()) {
-    drawRotateDeviceOverlay();
-    return;
-  }
-  // Overlay obligatorio para desbloquear audio (web/móvil)
+
   if (!audioUnlocked) {
-    drawTapToStartOverlay();
+    drawTapToStart();
     return;
   }
 
-  // audioManager existe desde preload(); si por cualquier razón no existiera, evitamos crash
-  if (audioManager) audioManager.update();
+  audioManager.update();
+
+  push();
+  translate(offsetX, offsetY);
+  scale(gameScale);
 
   switch (gameState) {
     case STATE_START:
@@ -153,232 +101,129 @@ function draw() {
       renderPlay();
       drawFail();
       break;
-
-    case STATE_PAUSE:
-      renderPlay();
-      drawPauseOverlay();
-      break;
-
-    // Si luego reactivas estas pantallas, añade sus funciones:
-    // case STATE_SCORES:
-    // case STATE_ENTER_NAME:
   }
+
+  pop();
+}
+
+// ======================================================
+// ESCALADO RESPONSIVE
+// ======================================================
+function updateGameScale() {
+  const sx = width / LOGICAL_W;
+  const sy = height / LOGICAL_H;
+
+  gameScale = min(sx, sy);
+  offsetX = (width  - LOGICAL_W * gameScale) / 2;
+  offsetY = (height - LOGICAL_H * gameScale) / 2;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  updateGameScale();
 }
 
 // ======================================================
 // JUEGO
 // ======================================================
 function updatePlay() {
-  levelScore = max(0, levelStartScore - corrections * penaltyPerCorrection);
-
-  for (let w of wells) {
+  for (const w of wells) {
     ship.applyForce(w.attract(ship));
     if (w.collides(ship)) {
-      failStartTime = millis();
       audioManager.playFail(true);
       gameState = STATE_FAIL;
       return;
     }
   }
 
-  handleInput();
+  if (input.isThrusting()) {
+    ship.thrust(input.getDirection());
+    corrections++;
+    audioManager.updateThrust(true);
+  } else {
+    audioManager.updateThrust(false);
+  }
+
   ship.update();
 
-  if (ship.outOfBounds(width, height)) {
-    failStartTime = millis();
+  if (ship.outOfBounds(LOGICAL_W, LOGICAL_H)) {
     audioManager.playFail(false);
     gameState = STATE_FAIL;
-    return;
   }
 
   if (target.reached(ship)) {
-    winStartTime = millis();
     audioManager.playWin();
-    gameState = STATE_WIN;
+    score += max(0, levelStartScore - corrections);
+    resetLevel();
   }
 }
 
 function renderPlay() {
-  image(backgroundLayer, 0, 0, width, height);
-
-  blendMode(ADD);
-  colorMode(HSB, 360, 100, 100, 255);
-  for (let s of stars) {
+  for (const s of stars) {
     s.update();
     s.display();
   }
-  colorMode(RGB);
-  blendMode(BLEND);
 
   target.display();
-  for (let w of wells) w.display(ship);
-  ship.display(isThrusting);
-
-  hud.display(score, levelScore, corrections);
+  for (const w of wells) w.display(ship);
+  ship.display();
 }
 
 // ======================================================
 // PANTALLAS
 // ======================================================
-function isLandscape() {
-  return window.innerWidth > window.innerHeight;
-}
-function drawRotateDeviceOverlay() {
-  background(0);
+function drawTapToStart() {
+  fill(0, 220);
+  rect(0, 0, width, height);
 
   fill(255);
   textAlign(CENTER, CENTER);
+  textSize(48);
+  text("SPACE DRIFT", width / 2, height * 0.4);
 
-  textSize(min(width, height) * 0.08);
-  text("Rotate your device", width / 2, height / 2 - 20);
-
-  textSize(min(width, height) * 0.04);
-  text("This game is played in landscape", width / 2, height / 2 + 30);
+  textSize(20);
+  text("Tap to start", width / 2, height * 0.55);
 }
+
 function drawStart() {
-  image(backgroundLayer, 0, 0, width, height);
-
-  for (let s of streaks) {
-    s.update();
-    s.display();
-  }
-
   fill(255);
   textAlign(CENTER, CENTER);
+  textSize(42);
+  text("SPACE DRIFT", LOGICAL_W / 2, LOGICAL_H / 3);
 
-  textSize(min(width, height) * 0.08);
-  text("SPACE DRIFT", width / 2, height * 0.3);
-
-  textSize(min(width, height) * 0.035);
-  text(
-    "Tap or press to start\nUse arrows or touch thrust\nAvoid gravity wells",
-    width / 2,
-    height * 0.55
-  );
+  textSize(18);
+  text("Avoid gravity wells\nReach the target",
+       LOGICAL_W / 2, LOGICAL_H / 2);
 }
 
 function drawWin() {
   fill(255);
   textAlign(CENTER, CENTER);
-  textSize(24);
-  text("Stable trajectory", width / 2, 30);
-
-  if (millis() - winStartTime > WIN_DELAY_MS) {
-    score += levelScore;
-    resetForNext();
-    gameState = STATE_PLAY;
-  }
+  text("Stable trajectory", LOGICAL_W / 2, 30);
 }
 
 function drawFail() {
   fill(255);
   textAlign(CENTER, CENTER);
-  textSize(24);
-  text("Lost contact", width / 2, 30);
-
-  if (millis() - failStartTime > FAIL_DELAY_MS) {
-    audioManager.updateThrust(false);
-    audioManager.stopFailFX();
-    audioManager.fadeToStart();
-    resetGame();
-    gameState = STATE_START;
-  }
+  text("Lost contact", LOGICAL_W / 2, 30);
 }
 
 // ======================================================
-// PAUSA (si la necesitas)
-// ======================================================
-function drawPauseOverlay() {
-  push();
-  fill(0, 180);
-  rect(0, 0, width, height);
-  fill(255);
-  textAlign(CENTER, CENTER);
-  textSize(28);
-  text("PAUSED", width / 2, height / 2 - 20);
-  textSize(16);
-  text("Tap / press SPACE to resume", width / 2, height / 2 + 20);
-  pop();
-}
-
-// ======================================================
-// INPUT
-// ======================================================
-function handleInput() {
-  isThrusting = false;
-
-  if (keyIsDown(LEFT_ARROW))  { ship.thrust(createVector(-1, 0)); isThrusting = true; }
-  if (keyIsDown(RIGHT_ARROW)) { ship.thrust(createVector(1, 0));  isThrusting = true; }
-  if (keyIsDown(UP_ARROW))    { ship.thrust(createVector(0, -1)); isThrusting = true; }
-  if (keyIsDown(DOWN_ARROW))  { ship.thrust(createVector(0, 1));  isThrusting = true; }
-  
-  // Táctil (móvil)
-  if (touches.length > 0) {
-    handleTouchInput();
-  }
-  if (isThrusting && !wasThrusting) corrections++;
-
-  audioManager.updateThrust(isThrusting);
-  wasThrusting = isThrusting;
-}
-function handleTouchInput() {
-  if (touches.length === 0) return;
-
-  const t = touches[0];
-
-  const cx = width / 2;
-  const cy = height / 2;
-
-  let dx = t.x - cx;
-  let dy = t.y - cy;
-
-  const mag = sqrt(dx * dx + dy * dy);
-  if (mag < 20) return; // zona muerta
-
-  dx /= mag;
-  dy /= mag;
-
-  ship.thrust(createVector(dx, dy));
-  isThrusting = true;
-}
-
-// ======================================================
-// RESET
-// ======================================================
-function resetForNext() {
-  corrections = 0;
-  wasThrusting = false;
-  levelScore = levelStartScore;
-
-  generateBackground();
-  resetLevel();
-}
-
-function resetGame() {
-  score = 0;
-  resetForNext();
-}
-
-// ======================================================
-// NIVEL / FONDO
+// NIVEL
 // ======================================================
 function resetLevel() {
-  ship = new Ship(width * 0.15, height * 0.5);
+  corrections = 0;
 
-  target = new Target(
-    width * 0.85,
-    random(80, height - 80),
-    min(width, height) * 0.035
-  );
+  ship = new Ship(LOGICAL_W * 0.15, LOGICAL_H * 0.5);
+  target = new Target(LOGICAL_W * 0.85, random(80, LOGICAL_H - 80), 25);
 
   wells = [];
-  let num = floor(random(minPlanets, maxPlanets + 1));
-
-  for (let i = 0; i < num; i++) {
+  const n = floor(random(2, 4));
+  for (let i = 0; i < n; i++) {
     wells.push(
       new GravityWell(
-        random(width * 0.25, width * 0.75),
-        random(height * 0.25, height * 0.75),
+        random(LOGICAL_W * 0.3, LOGICAL_W * 0.7),
+        random(LOGICAL_H * 0.3, LOGICAL_H * 0.7),
         random(25, 50),
         random(20, 32)
       )
@@ -386,113 +231,24 @@ function resetLevel() {
   }
 }
 
-function generateBackground() {
-
-  const d = pixelDensity();
-
-  backgroundLayer = createGraphics(width * d, height * d);
-  backgroundLayer.pixelDensity(1); // MUY IMPORTANTE
-
-  let nebula = new Nebula();
-  nebula.render(backgroundLayer);
-}
-
-
-function initStars() {
+function generateStars() {
   stars = [];
-  for (let i = 0; i < numStars; i++) stars.push(new Star());
-}
-
-function initStreaks() {
-  streaks = [];
-  for (let i = 0; i < numStreaks; i++) streaks.push(new Streak());
+  for (let i = 0; i < 250; i++) stars.push(new Star());
 }
 
 // ======================================================
-// OVERLAY TAP TO START
+// AUDIO UNLOCK
 // ======================================================
-function drawTapToStartOverlay() {
-  push();
-  fill(0, 220);
-  rect(0, 0, width, height);
-
-  fill(255);
-  textAlign(CENTER, CENTER);
-
-  textSize(min(width, height) * 0.09);
-  text("SPACE DRIFT", width / 2, height * 0.4);
-
-  textSize(min(width, height) * 0.04);
-  text("Tap to start", width / 2, height * 0.55);
-
-  pop();
-}
-
-// ======================================================
-// DESBLOQUEO AUDIO (WEB)
-// ======================================================
-function unlockAudioIfNeeded() {
+function unlockAudio() {
   if (!audioUnlocked) {
     userStartAudio();
     audioManager.playStart();
     audioUnlocked = true;
     gameState = STATE_START;
+
+    setTimeout(() => window.scrollTo(0, 1), 100);
   }
 }
 
-function mousePressed() {
-
-  // 1. Desbloqueo de audio (solo la primera vez)
-  if (!audioUnlocked) {
-    unlockAudioIfNeeded();
-    return;
-  }
-
-  // 2. Arranque del juego desde la pantalla inicial
-  if (gameState === STATE_START) {
-    audioManager.fadeToGame();
-    resetGame();
-    gameState = STATE_PLAY;
-  }
-}
-
-
-function touchStarted() {
-
-  if (!audioUnlocked) {
-    unlockAudioIfNeeded();
-    return false;
-  }
-
-  if (gameState === STATE_START) {
-    audioManager.fadeToGame();
-    resetGame();
-    gameState = STATE_PLAY;
-  }
-
-  return false;
-}
-
-
-// ======================================================
-// RESPONSIVE
-// ======================================================
-function windowResized() {
-  resizeCanvas(windowWidth, windowHeight);
-  generateBackground();
-  initStars();
-  initStreaks();
-  resetLevel();
-}
-
-// ======================================================
-// REGISTRO EN window PARA QUE p5 (GLOBAL MODE) LOS ENCUENTRE
-// ======================================================
-window.preload = preload;
-window.setup = setup;
-window.draw = draw;
-
-window.mousePressed = mousePressed;
-window.touchStarted = touchStarted;
-
-window.windowResized = windowResized;
+function mousePressed() { unlockAudio(); }
+function touchStarted() { unlockAudio(); return false; }
