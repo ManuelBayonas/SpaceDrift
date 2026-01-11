@@ -41,8 +41,6 @@ thrust(dir) {
   const angle = this.vel.heading();
 
   push();
-  pushStyle();
-
   translate(this.pos.x, this.pos.y);
   rotate(angle);
 
@@ -74,8 +72,6 @@ thrust(dir) {
       -this.size * (1.4 + random(0.3)), 0
     );
   }
-
-  popStyle();
   pop();
 }
 
