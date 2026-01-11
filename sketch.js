@@ -121,7 +121,10 @@ function setup() {
 // ======================================================
 function draw() {
   background(0);
-
+  if (!isLandscape()) {
+    drawRotateDeviceOverlay();
+    return;
+  }
   // Overlay obligatorio para desbloquear audio (web/móvil)
   if (!audioUnlocked) {
     drawTapToStartOverlay();
@@ -217,6 +220,21 @@ function renderPlay() {
 // ======================================================
 // PANTALLAS
 // ======================================================
+function isLandscape() {
+  return window.innerWidth > window.innerHeight;
+}
+function drawRotateDeviceOverlay() {
+  background(0);
+
+  fill(255);
+  textAlign(CENTER, CENTER);
+
+  textSize(min(width, height) * 0.08);
+  text("Rotate your device", width / 2, height / 2 - 20);
+
+  textSize(min(width, height) * 0.04);
+  text("This game is played in landscape", width / 2, height / 2 + 30);
+}
 function drawStart() {
   image(backgroundLayer, 0, 0, width, height);
 
@@ -293,11 +311,35 @@ function handleInput() {
   if (keyIsDown(RIGHT_ARROW)) { ship.thrust(createVector(1, 0));  isThrusting = true; }
   if (keyIsDown(UP_ARROW))    { ship.thrust(createVector(0, -1)); isThrusting = true; }
   if (keyIsDown(DOWN_ARROW))  { ship.thrust(createVector(0, 1));  isThrusting = true; }
-
+  
+  // Táctil (móvil)
+  if (touches.length > 0) {
+    handleTouchInput();
+  }
   if (isThrusting && !wasThrusting) corrections++;
 
   audioManager.updateThrust(isThrusting);
   wasThrusting = isThrusting;
+}
+function handleTouchInput() {
+  if (touches.length === 0) return;
+
+  const t = touches[0];
+
+  const cx = width / 2;
+  const cy = height / 2;
+
+  let dx = t.x - cx;
+  let dy = t.y - cy;
+
+  const mag = sqrt(dx * dx + dy * dy);
+  if (mag < 20) return; // zona muerta
+
+  dx /= mag;
+  dy /= mag;
+
+  ship.thrust(createVector(dx, dy));
+  isThrusting = true;
 }
 
 // ======================================================
