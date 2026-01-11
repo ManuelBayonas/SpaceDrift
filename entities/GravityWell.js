@@ -77,42 +77,11 @@ export class GravityWell {
   // --------------------
   // PLANETA (núcleo)
   // --------------------
-  display(ship) {
-
-  // Distancia nave ↔ pozo gravitatorio
-  const d = p5.Vector.dist(this.pos, ship.pos);
-
-  // Parámetros visuales del campo
-  const visualRadius = this.radius * 6;
-  const fadeStart = visualRadius * 0.8;
-
-  // Intensidad del campo según distancia
-  let influence = map(d, fadeStart, this.radius, 0, 1);
-  influence = constrain(influence, 0, 1);
-
-  // --------------------
-  // CAMPO GRAVITATORIO
-  // --------------------
-  if (influence > 0) {
-    noFill();
-    stroke(200, 120 * influence);
-    strokeWeight(1 + 2 * influence);
-    ellipse(
-      this.pos.x,
-      this.pos.y,
-      visualRadius * 2,
-      visualRadius * 2
-    );
-  }
-
-  // --------------------
-  // PLANETA (núcleo)
-  // --------------------
   imageMode(CENTER);
   image(this.sprite, this.pos.x, this.pos.y);
   imageMode(CORNER);
 }
 
-}
+
 
 }
