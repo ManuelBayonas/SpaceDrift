@@ -209,7 +209,7 @@ function renderPlay() {
 
   target.display();
   for (let w of wells) w.display(ship);
-  ship.display();
+  ship.display(isThrusting);
 
   hud.display(score, levelScore, corrections);
 }
