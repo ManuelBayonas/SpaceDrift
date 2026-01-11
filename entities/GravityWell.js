@@ -43,43 +43,45 @@ export class GravityWell {
   // SPRITE PROCEDURAL
   // --------------------------------------------------
   generateSprite() {
-    const d = int(this.radius * 2.4);
-    const pg = createGraphics(d, d);
+  const d = int(this.radius * 2.4);
+  const pg = createGraphics(d, d);
 
-    pg.pixelDensity(1);
-    pg.beginDraw();
-    pg.noStroke();
+  pg.noStroke();
 
-    const noiseScale = 0.08;
-    const offset = random(1000);
+  const noiseScale = 0.08;
+  const offset = random(1000);
 
-    for (let y = 0; y < d; y++) {
-      for (let x = 0; x < d; x++) {
+  for (let y = 0; y < d; y++) {
+    for (let x = 0; x < d; x++) {
 
-        const dx = x - d / 2;
-        const dy = y - d / 2;
-        const dist = sqrt(dx * dx + dy * dy);
+      const dx = x - d / 2;
+      const dy = y - d / 2;
+      const dist = sqrt(dx * dx + dy * dy);
 
-        if (dist < this.radius) {
-          const n = noise(
-            x * noiseScale + offset,
-            y * noiseScale + offset
-          );
+      if (dist < this.radius) {
 
-          const shade = map(n, 0, 1, 0.8, 1.1);
+        const n = noise(
+          x * noiseScale + offset,
+          y * noiseScale + offset
+        );
 
-            pg.fill(
-              red(this.baseColor)   * shade,
-              green(this.baseColor) * shade,
-              blue(this.baseColor)  * shade
-            );
-          }
+        const shade = map(n, 0, 1, 0.8, 1.1);
+
+        pg.fill(
+          red(this.baseColor)   * shade,
+          green(this.baseColor) * shade,
+          blue(this.baseColor)  * shade
+        );
+
+        // IMPORTANTE: dibujar el píxel
+        pg.rect(x, y, 1, 1);
       }
     }
-
-    pg.endDraw();
-    return pg;
   }
+
+  return pg;
+}
+
 
   // --------------------------------------------------
   // DIBUJO
